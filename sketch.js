@@ -56,6 +56,7 @@ function draw() {
     strokeWeight(use_strokeweight);
   } else {
     strokeWeight(use_laser_strokeweight);
+    noFill();
     rect(0, 0, w, h);
   }
 
@@ -462,6 +463,7 @@ function keyPressed() {
       l.radius = ellipseRadiusScale * gridSize;
     }
 
+    // scale bezier curves
     for (let bezierCurve of beziers) {
       bezierCurve.startBx =
         ((bezierCurve.startBx - marginsize) * gridSize) /
@@ -504,6 +506,8 @@ function keyPressed() {
         marginsize;
     }
   }
+
+  // grid size change or grid scale change
   if (
     (key == "1") | (key == "2") | (key == "3") | (key == "4") | (key == "5") ||
     key == "6"
