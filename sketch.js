@@ -6,7 +6,9 @@
 // web-client-content-script.js:2 Uncaught (in promise) Error: Access to storage is not allowed from this context.Understand this errorAI
 // ...............................................................
 var gridSize;
-let thickness = 3.05; // millimetres
+let tolerance = 0.05; // Tolerance for connecting cutted pieces
+let thicknessWithoutTolerance = 3; // millimetres
+let thickness;
 let gridSizeScale = 7; // Change this to adjust the grid size
 let lines = [];
 // let drawingBezier = false; // Flag for drawing Bezier curves
@@ -25,6 +27,7 @@ let h;
 let showStartPoint = false;
 let rx = 30;
 let ry = 30;
+let endX, endY;
 
 let drawingBezier = false; // Flag for drawing Bezier curves
 let bezierState = 0; // 0: Start/End points, 1: Control points
@@ -36,10 +39,13 @@ let snappointstogrid = false;
 let mx, my; // mouse coordinates
 
 function setup() {
+
+  thickness = thicknessWithoutTolerance + tolerance;
   gridSize = thickness * gridSizeScale;
   marginsize = margin * gridSizeScale;
   w = marginsize * 2 + rx * gridSize;
   h = marginsize * 2 + ry * gridSize;
+
 
 
   // createCanvas(windowWidth, windowHeight);
@@ -61,7 +67,9 @@ function draw() {
   }
 
   fill(255, 0, 0);
-  ellipse(snapToGrid(mouseX), snapToGrid(mouseY), 10, 10);
+  if (snappointstogrid) {
+    ellipse(snapToGrid(mouseX), snapToGrid(mouseY), 10, 10);
+  }
 
   if (showStartPoint) {
     fill(0, 255, 0);
@@ -71,12 +79,12 @@ function draw() {
     textAlign(LEFT, TOP);
     text(
       showToGridValue(startX) +
-        "," +
-        showToGridValue(startY) +
-        " to " +
-        showToGridValue(mouseX) +
-        "," +
-        showToGridValue(mouseY),
+      "," +
+      showToGridValue(startY) +
+      " to " +
+      showToGridValue(mouseX) +
+      "," +
+      showToGridValue(mouseY),
       10,
       10
     );
@@ -179,24 +187,32 @@ function draw() {
     if (bezierState === 0) {
       // Preview for start and end points only
       if (startBx && startBy && endBX && endBY) {
-        bezier(startBx, startBy, mouseX, mouseY, mouseX, mouseY, endBX, endBY);
+        if (!snapcontrolpointstogrid) {
+          bezier(startBx, startBy, mouseX, mouseY, mouseX, mouseY, endBX, endBY);
+        } else {
+          bezier(startBx, startBy, snapToGrid(mouseX), snapToGrid(mouseY), snapToGrid(mouseX), snapToGrid(mouseY), endBX, endBY);
+        }
+        
       }
     } else if (bezierState === 1) {
       if (!controlX1 && !controlY1) {
         // Preview with mouse as the first control point
-        bezier(startBx, startBy, mouseX, mouseY, mouseX, mouseY, endBX, endBY);
+        // bezier(startBx, startBy, mouseX, mouseY, mouseX, mouseY, endBX, endBY);
+        if (!snapcontrolpointstogrid) {
+          bezier(startBx, startBy, mouseX, mouseY, mouseX, mouseY, endBX, endBY);
+        } else {
+          bezier(startBx, startBy, snapToGrid(mouseX), snapToGrid(mouseY), snapToGrid(mouseX), snapToGrid(mouseY), endBX, endBY);
+        }
       } else if (!controlX2 && !controlY2) {
         // Preview with the second control point as the mouse
-        bezier(
-          startBx,
-          startBy,
-          controlX1,
-          controlY1,
-          mouseX,
-          mouseY,
-          endBX,
-          endBY
-        );
+      
+        if (!snapcontrolpointstogrid) {
+          bezier(startBx, startBy, controlX1, controlY1, mouseX, mouseY, endBX, endBY);
+        } else {
+          bezier(startBx, startBy, controlX1, controlY1, snapToGrid(mouseX), snapToGrid(mouseY), endBX, endBY);
+        }
+
+
       }
     }
     stroke(0);
@@ -205,7 +221,12 @@ function draw() {
   // Preview line while drawing
   if (drawing & !drawingBezier) {
     stroke(0);
-    line(startX, startY, snapToGrid(mouseX), snapToGrid(mouseY));
+    if (snappointstogrid) {
+      line(startX, startY, snapToGrid(mouseX), snapToGrid(mouseY));
+    } else {
+      line(startX, startY, (mouseX), (mouseY));
+    }
+
   }
 }
 function resetBezierState() {
@@ -222,13 +243,49 @@ function showToGridValue(val) {
   return round((val - marginsize) / gridSize);
 }
 
+
+function endlinepoint() {
+if (snappointstogrid) {
+  endX = snapToGrid(mouseX);
+  endY = snapToGrid(mouseY);
+  lines.push({ x1: startX, y1: startY, x2: endX, y2: endY });
+} else {
+  endX = (mouseX);
+  endY = (mouseY);
+  lines.push({ x1: startX, y1: startY, x2: mouseX, y2: mouseY });
+}
+
+drawing = false;
+showStartPoint = false;
+}
+
+
+function selectLineStartPoint(fromPrevious) {
+
+  if (fromPrevious) {
+    startX = endX;
+    startY = endY;
+  } else {
+    if (snappointstogrid) {
+      startX = snapToGrid(mouseX);
+      startY = snapToGrid(mouseY);
+    } else {
+      startX = (mouseX);
+      startY = (mouseY);
+    }
+  }
+
+
+  drawing = true;
+  showStartPoint = true;
+}
+
+
+// Start drawing ------------
 function mousePressed() {
   if (mouseButton === LEFT) {
     if (!drawingBezier) {
-      startX = snapToGrid(mouseX);
-      startY = snapToGrid(mouseY);
-      drawing = true;
-      showStartPoint = true;
+      selectLineStartPoint(fromPrevious = false);
     }
 
     if (drawingBezier && bezierState === 0) {
@@ -290,15 +347,14 @@ function mousePressed() {
 
 function mouseReleased() {
   if (drawing & !drawingBezier) {
-    let endX = snapToGrid(mouseX);
-    let endY = snapToGrid(mouseY);
-    lines.push({ x1: startX, y1: startY, x2: endX, y2: endY });
-    drawing = false;
-    showStartPoint = false;
+    endlinepoint();
   }
 }
+// MOUSE functions <---------------------------------------------------
 
-// Draw the grid
+// DRAW Functions ---------------------------------------------------
+
+// Draw the grid ---------------------------------------------------
 function drawGrid() {
   stroke(220);
   strokeWeight(0.5);
@@ -337,6 +393,21 @@ function keyPressed() {
 
     ellipses.push(newEllipse); // Add new ellipse to the array
   }
+
+  if (key === "p") {
+    if (drawing) {
+      endlinepoint();
+    } else {
+      if (lines.length === 0) {
+        selectLineStartPoint(fromPrevious = false);
+      } else {
+        selectLineStartPoint(fromPrevious = true);
+      }
+      
+    }
+    
+  }
+
   if (key === "c") {
     snapcontrolpointstogrid = !snapcontrolpointstogrid;
   }
@@ -396,42 +467,42 @@ function keyPressed() {
     for (let bezierCurve of beziers) {
       bezierCurve.startBx =
         ((bezierCurve.startBx - marginsize) * gridSize) /
-          (thickness * (gridSizeScale + 1)) +
+        (thickness * (gridSizeScale + 1)) +
         marginsize;
 
       bezierCurve.startBy =
         ((bezierCurve.startBy - marginsize) * gridSize) /
-          (thickness * (gridSizeScale + 1)) +
+        (thickness * (gridSizeScale + 1)) +
         marginsize;
 
       bezierCurve.endBX =
         ((bezierCurve.endBX - marginsize) * gridSize) /
-          (thickness * (gridSizeScale + 1)) +
+        (thickness * (gridSizeScale + 1)) +
         marginsize;
 
       bezierCurve.endBY =
         ((bezierCurve.endBY - marginsize) * gridSize) /
-          (thickness * (gridSizeScale + 1)) +
+        (thickness * (gridSizeScale + 1)) +
         marginsize;
 
       bezierCurve.controlX1 =
         ((bezierCurve.controlX1 - marginsize) * gridSize) /
-          (thickness * (gridSizeScale + 1)) +
+        (thickness * (gridSizeScale + 1)) +
         marginsize;
 
       bezierCurve.controlY1 =
         ((bezierCurve.controlY1 - marginsize) * gridSize) /
-          (thickness * (gridSizeScale + 1)) +
+        (thickness * (gridSizeScale + 1)) +
         marginsize;
 
       bezierCurve.controlX2 =
         ((bezierCurve.controlX2 - marginsize) * gridSize) /
-          (thickness * (gridSizeScale + 1)) +
+        (thickness * (gridSizeScale + 1)) +
         marginsize;
 
       bezierCurve.controlY2 =
         ((bezierCurve.controlY2 - marginsize) * gridSize) /
-          (thickness * (gridSizeScale + 1)) +
+        (thickness * (gridSizeScale + 1)) +
         marginsize;
     }
   } else if (key === "6") {
@@ -468,42 +539,42 @@ function keyPressed() {
     for (let bezierCurve of beziers) {
       bezierCurve.startBx =
         ((bezierCurve.startBx - marginsize) * gridSize) /
-          (thickness * (gridSizeScale - 1)) +
+        (thickness * (gridSizeScale - 1)) +
         marginsize;
 
       bezierCurve.startBy =
         ((bezierCurve.startBy - marginsize) * gridSize) /
-          (thickness * (gridSizeScale - 1)) +
+        (thickness * (gridSizeScale - 1)) +
         marginsize;
 
       bezierCurve.endBX =
         ((bezierCurve.endBX - marginsize) * gridSize) /
-          (thickness * (gridSizeScale - 1)) +
+        (thickness * (gridSizeScale - 1)) +
         marginsize;
 
       bezierCurve.endBY =
         ((bezierCurve.endBY - marginsize) * gridSize) /
-          (thickness * (gridSizeScale - 1)) +
+        (thickness * (gridSizeScale - 1)) +
         marginsize;
 
       bezierCurve.controlX1 =
         ((bezierCurve.controlX1 - marginsize) * gridSize) /
-          (thickness * (gridSizeScale - 1)) +
+        (thickness * (gridSizeScale - 1)) +
         marginsize;
 
       bezierCurve.controlY1 =
         ((bezierCurve.controlY1 - marginsize) * gridSize) /
-          (thickness * (gridSizeScale - 1)) +
+        (thickness * (gridSizeScale - 1)) +
         marginsize;
 
       bezierCurve.controlX2 =
         ((bezierCurve.controlX2 - marginsize) * gridSize) /
-          (thickness * (gridSizeScale - 1)) +
+        (thickness * (gridSizeScale - 1)) +
         marginsize;
 
       bezierCurve.controlY2 =
         ((bezierCurve.controlY2 - marginsize) * gridSize) /
-          (thickness * (gridSizeScale - 1)) +
+        (thickness * (gridSizeScale - 1)) +
         marginsize;
     }
   }
