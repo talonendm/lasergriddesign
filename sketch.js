@@ -345,7 +345,8 @@ function keyPressed() {
   }
 
   if (key === "s" || key === "S") {
-    saveCanvas("drawing", "svg");
+    let datetag = new Date().toISOString().replace(/[-:]/g, "").split('.')[0];  // Generate a timestamp
+    saveCanvas("laser" + datetag, "svg");
   } else if (key === "z" || key === "Z" || key === "u") {
     undoLastLine();
   } else if (key == "g") {
