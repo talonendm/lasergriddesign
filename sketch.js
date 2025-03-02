@@ -19,8 +19,8 @@ let ellipseRadiusScale = 0.5; // Radius of the ellipse
 let drawing = false;
 let startX, startY;
 let showgrid = true;
-let use_strokeweight = 0.3;
-let use_laser_strokeweight = 0.1;
+let use_strokeweight = 2; //0.3;
+let use_laser_strokeweight = 1; //0.1;
 let margin = 1; // millimetres
 let w;
 let h;
@@ -46,11 +46,14 @@ function setup() {
   w = marginsize * 2 + rx * gridSize;
   h = marginsize * 2 + ry * gridSize;
 
+  createCanvas(w, h, SVG); // Create SVG Canvas (40mm x 40mm)
 
 
   // createCanvas(windowWidth, windowHeight);
 
-  createCanvas(w, h);
+  // createCanvas(w, h);
+  //createCanvas(800, 800, SVG);  // see: https://github.com/zenozeng/p5.js-svg?tab=readme-ov-file
+  
   background(255);
   strokeWeight(use_strokeweight); // Set thin stroke
 }
@@ -415,9 +418,13 @@ function keyPressed() {
     snappointstogrid = !snappointstogrid;
   }
 
-  if (key === "s" || key === "S") {
+  if (key === "s") {
     let datetag = new Date().toISOString().replace(/[-:]/g, "").split('.')[0];  // Generate a timestamp
     saveCanvas("laser" + datetag, "svg");
+  } else if (key === "S") {
+    let datetag = new Date().toISOString().replace(/[-:]/g, "").split('.')[0];  // Generate a timestamp
+    save("laser_" + datetag + ".svg");
+
   } else if (key === "z" || key === "Z" || key === "u") {
     undoLastLine();
   } else if (key == "g") {
@@ -584,11 +591,21 @@ function keyPressed() {
     (key == "1") | (key == "2") | (key == "3") | (key == "4") | (key == "5") ||
     key == "6"
   ) {
+
+
+  // Manually clear the canvas before resizing
+  //clear();  // Clear the canvas
+
     // Update canvas size
     w = marginsize * 2 + rx * gridSize;
     h = marginsize * 2 + ry * gridSize;
-    resizeCanvas(w, h);
-    redraw();
+    //resizeCanvas(w, h, SVG); // Resize the canvas and keep SVG renderer active
+    //redraw();
+
+
+  // Create a new canvas with the new size
+  //createCanvas(w, h, SVG); 
+
   }
 }
 

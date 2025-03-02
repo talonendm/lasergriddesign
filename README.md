@@ -16,6 +16,9 @@ This is a laser cutting design application built with p5.js that allows users to
 ### Drawing Tools:
 - **`q`, `b`, `l`**: Toggle Bezier curve mode. Once activated, the user can click to set the start, end, and control points of the Bezier curve.
 - **`e`**: Draw an ellipse at the current mouse position. The ellipse will be stored in an array for future use.
+- To implement a feature where pressing the p key continues a line from the last point (the last end point where the user stopped drawing), you need to store the last point and, when **`p`** is pressed, use it as the starting point for the next line.
+  - draw lines by mouseDragging.
+
 
 ### Grid and Snap:
 - **`c`**: Toggle snapping of control points to the grid.
