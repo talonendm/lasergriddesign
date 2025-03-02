@@ -16,11 +16,13 @@ let lines = [];
 let ellipses = [];
 let ellipseRadiusScale = 0.5; // Radius of the ellipse
 
+let drawRectInSave = false; // w x h when saving SVG
+
 let drawing = false;
 let startX, startY;
 let showgrid = true;
-let use_strokeweight = 2; //0.3;
-let use_laser_strokeweight = 1; //0.1;
+let use_strokeweight = 0.3; //2; //0.3;
+let use_laser_strokeweight = 0.08; // 1; //0.1;
 let margin = 1; // millimetres
 let w;
 let h;
@@ -46,14 +48,14 @@ function setup() {
   w = marginsize * 2 + rx * gridSize;
   h = marginsize * 2 + ry * gridSize;
 
-  createCanvas(w, h, SVG); // Create SVG Canvas (40mm x 40mm)
+  createCanvas(w, h); // SVG in sabving, dynamic drawing Create SVG Canvas (40mm x 40mm)
 
 
   // createCanvas(windowWidth, windowHeight);
 
   // createCanvas(w, h);
   //createCanvas(800, 800, SVG);  // see: https://github.com/zenozeng/p5.js-svg?tab=readme-ov-file
-  
+
   background(255);
   strokeWeight(use_strokeweight); // Set thin stroke
 }
@@ -64,9 +66,13 @@ function draw() {
     drawGrid();
     strokeWeight(use_strokeweight);
   } else {
-    strokeWeight(use_laser_strokeweight);
-    noFill();
-    rect(0, 0, w, h);
+
+    if (drawRectInSave) {
+      strokeWeight(use_laser_strokeweight);
+      noFill();
+      rect(0, 0, w, h);
+    }
+
   }
 
   fill(255, 0, 0);
@@ -195,7 +201,7 @@ function draw() {
         } else {
           bezier(startBx, startBy, snapToGrid(mouseX), snapToGrid(mouseY), snapToGrid(mouseX), snapToGrid(mouseY), endBX, endBY);
         }
-        
+
       }
     } else if (bezierState === 1) {
       if (!controlX1 && !controlY1) {
@@ -208,7 +214,7 @@ function draw() {
         }
       } else if (!controlX2 && !controlY2) {
         // Preview with the second control point as the mouse
-      
+
         if (!snapcontrolpointstogrid) {
           bezier(startBx, startBy, controlX1, controlY1, mouseX, mouseY, endBX, endBY);
         } else {
@@ -248,18 +254,18 @@ function showToGridValue(val) {
 
 
 function endlinepoint() {
-if (snappointstogrid) {
-  endX = snapToGrid(mouseX);
-  endY = snapToGrid(mouseY);
-  lines.push({ x1: startX, y1: startY, x2: endX, y2: endY });
-} else {
-  endX = (mouseX);
-  endY = (mouseY);
-  lines.push({ x1: startX, y1: startY, x2: mouseX, y2: mouseY });
-}
+  if (snappointstogrid) {
+    endX = snapToGrid(mouseX);
+    endY = snapToGrid(mouseY);
+    lines.push({ x1: startX, y1: startY, x2: endX, y2: endY });
+  } else {
+    endX = (mouseX);
+    endY = (mouseY);
+    lines.push({ x1: startX, y1: startY, x2: mouseX, y2: mouseY });
+  }
 
-drawing = false;
-showStartPoint = false;
+  drawing = false;
+  showStartPoint = false;
 }
 
 
@@ -406,9 +412,9 @@ function keyPressed() {
       } else {
         selectLineStartPoint(fromPrevious = true);
       }
-      
+
     }
-    
+
   }
 
   if (key === "c") {
@@ -418,12 +424,15 @@ function keyPressed() {
     snappointstogrid = !snappointstogrid;
   }
 
-  if (key === "s") {
+  if (key === "j") {
+    // SVG: Uncaught TypeError: htmlCanvas.toBlob is not a function
     let datetag = new Date().toISOString().replace(/[-:]/g, "").split('.')[0];  // Generate a timestamp
-    saveCanvas("laser" + datetag, "svg");
-  } else if (key === "S") {
-    let datetag = new Date().toISOString().replace(/[-:]/g, "").split('.')[0];  // Generate a timestamp
-    save("laser_" + datetag + ".svg");
+    saveCanvas("laser" + datetag, "png"); // PNG etc
+  } else if (key === "s" || key === "S") {
+    //let datetag = new Date().toISOString().replace(/[-:]/g, "").split('.')[0];  // Generate a timestamp
+    //save("laser_" + datetag + ".svg");
+
+    saveSVGlaser();  // Save the SVG when the 'S' key is pressed
 
   } else if (key === "z" || key === "Z" || key === "u") {
     undoLastLine();
@@ -593,20 +602,60 @@ function keyPressed() {
   ) {
 
 
-  // Manually clear the canvas before resizing
-  //clear();  // Clear the canvas
+    // Manually clear the canvas before resizing
+    //clear();  // Clear the canvas
 
     // Update canvas size
     w = marginsize * 2 + rx * gridSize;
     h = marginsize * 2 + ry * gridSize;
-    //resizeCanvas(w, h, SVG); // Resize the canvas and keep SVG renderer active
-    //redraw();
+    resizeCanvas(w, h); // , SVG); // Resize the canvas and keep SVG renderer active
+    redraw();
 
 
-  // Create a new canvas with the new size
-  //createCanvas(w, h, SVG); 
+    // Create a new canvas with the new size
+    //createCanvas(w, h, SVG); 
 
   }
+}
+
+function saveSVGlaser() {
+  // Create an SVG canvas and draw only the stored lines
+  let svgCanvas = createGraphics(w, h, SVG);
+  svgCanvas.noFill();
+  svgCanvas.stroke(0);
+  svgCanvas.strokeWeight(use_laser_strokeweight);
+
+  for (let i = 0; i < lines.length; i++) {
+    svgCanvas.line(lines[i].x1, lines[i].y1, lines[i].x2, lines[i].y2);
+  }
+
+  // Draw existing Bezier curves
+  for (let bezierCurve of beziers) {
+    svgCanvas.bezier(
+      bezierCurve.startBx,
+      bezierCurve.startBy,
+      bezierCurve.controlX1,
+      bezierCurve.controlY1,
+      bezierCurve.controlX2,
+      bezierCurve.controlY2,
+      bezierCurve.endBX,
+      bezierCurve.endBY
+    );
+  }
+
+  // Draw all stored ellipses from the array
+  for (let i = 0; i < ellipses.length; i++) {
+    let e = ellipses[i];
+    svgCanvas.ellipse(e.x, e.y, e.radius * 2, e.radius * 2); // Draw the ellipse
+  }
+
+  if (drawRectInSave) {
+    svgCanvas.ect(0, 0, w, h);
+  }
+
+  // Save the SVG
+  let datetag = new Date().toISOString().replace(/[-:]/g, "").split('.')[0];  // Generate a timestamp
+  svgCanvas.save("laser_" + datetag + ".svg");
 }
 
 // Undo last drawn line
