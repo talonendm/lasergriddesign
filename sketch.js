@@ -31,6 +31,8 @@ let rx = 30;
 let ry = 30;
 let endX, endY;
 
+let showIndex = false;
+
 let drawingBezier = false; // Flag for drawing Bezier curves
 let bezierState = 0; // 0: Start/End points, 1: Control points
 let startBx, startBy, endBX, endBY, controlX1, controlY1, controlX2, controlY2;
@@ -115,12 +117,18 @@ function draw() {
       h - margin
     );
 
-    textAlign(CENTER, TOP);
+    text(
+      "(e)llipse radius: " + ellipseRadiusScale,
+      margin,
+      h - margin - gridSize
+    );
+
+    textAlign(CENTER, BOTTOM);
 
     if (drawingBezier) {
-      text("Bezier: 4 mouse clicks. Ellipse e", w / 2, margin);
+      text("Bezier: 4 mouse clicks.", w / 2, h - margin - gridSize);
     } else {
-      text("Line: drag and drop. Ellipse e", w / 2, margin);
+      text("Line: drag and drop.", w / 2, h - margin - gridSize);
     }
 
     let infotext = "";
@@ -151,8 +159,13 @@ function draw() {
 
   // Draw all saved lines
   for (let l of lines) {
-    stroke(0);
+    stroke(0); // Use black stroke for lines
     line(l.x1, l.y1, l.x2, l.y2);
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    let l = lines[i];
+    if (showIndex) text(i, l.x1, l.y1);
   }
 
   // Draw all stored ellipses from the array
@@ -163,6 +176,7 @@ function draw() {
     stroke(0);
     //noStroke(); // No stroke for the ellipses
     ellipse(e.x, e.y, e.radius * 2, e.radius * 2); // Draw the ellipse
+    if (showIndex) text(i, e.x, e.y);
   }
 
   // Draw existing Bezier curves
@@ -179,6 +193,15 @@ function draw() {
       bezierCurve.endBX,
       bezierCurve.endBY
     );
+
+    
+
+  }
+
+
+  for (let i = 0; i < beziers.length; i++) {
+    let bezierCurve = beziers[i];
+    if (showIndex) text(i, bezierCurve.startBx, bezierCurve.startBy);
   }
 
   // Visual feedback for the current Bezier being drawn
@@ -422,6 +445,20 @@ function keyPressed() {
   }
   if (key === "C") {
     snappointstogrid = !snappointstogrid;
+  }
+
+  if (key === "+") {
+    snappointstogrid = !snappointstogrid;
+    ellipseRadiusScale = ellipseRadiusScale + 0.25;
+  }
+  if (key === "-") {
+    if (ellipseRadiusScale>=0.5) {
+      ellipseRadiusScale = ellipseRadiusScale - 0.25;
+    }
+  }
+
+  if (key === "i") {
+    showIndex = !showIndex; 
   }
 
   if (key === "j") {
